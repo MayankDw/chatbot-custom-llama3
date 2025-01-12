@@ -84,7 +84,7 @@ index_diagram
 
 ![](https://python.langchain.com/v0.2/assets/images/rag_indexing-8160f90a90a33253d0154659cf7d453f.png)
 
-- Retrieval and generation
+- Retrieval and generation.
 - Retrieve: Given a user input, relevant splits are retrieved from storage using a Retriever.
 - Generate: A ChatModel / LLM produces an answer using a prompt that includes the question and the retrieved data
 
