@@ -25,18 +25,18 @@ MODEL = "llama3"
 
 @st.cache_data
 def load_data(url):
-    # Cargar datos desde la URL
+    # load URL
     loader = WebBaseLoader(url)
     data = loader.load()
 
-    # Dividir el texto en partes manejables
+    # Divide the text in parts
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1500, chunk_overlap=100)
     all_splits = text_splitter.split_documents(data)
 
     return all_splits
 
 def extract_response(response):
-    # Si la respuesta es un diccionario, extraer el valor de 'result'
+    # get results in dictionary 
     if isinstance(response, dict) and 'result' in response:
         return response['result']
     return response
@@ -51,60 +51,58 @@ def main():
     Returns:
         None
     """
-    st.title("Chat with Llama3")
-
-    # Inicializar el historial de conversaciones fuera de la función main
+    st.title("Chat with llama")
     if 'conversation_history' not in st.session_state:
         st.session_state['conversation_history'] = []
 
-    # Campo de entrada para la URL
+    
     url = st.text_input("Enter the URL to scrape", "https://d2l.ai/chapter_linear-regression/generalization.html#underfitting-or-overfitting")
 
-    # Campo de entrada para la pregunta personalizada
+    
     custom_question = st.text_input("You: ", "What is the main idea about the text?")
 
-    # Botón para enviar la pregunta
+    
     if st.button("Send"):
         with st.spinner("Fetching data..."):
-            # Cargar datos desde la URL si la URL ha cambiado
+            
             all_splits = load_data(url)
 
-            # Crear el almacén de vectores
+            
             vectorstore = Chroma.from_documents(
                 documents=all_splits, embedding=GPT4AllEmbeddings(model_name="all-MiniLM-L6-v2.gguf2.f16.gguf", gpt4all_kwargs={'allow_download': True})
             )
 
-            # Cargar el modelo de lenguaje
+            
             llm = Ollama(
                 model=MODEL,
                 verbose=True,
                 callback_manager=CallbackManager([StreamingStdOutCallbackHandler()]),
             )
 
-            # Obtener el prompt para la consulta
+            
             QA_CHAIN_PROMPT = hub.pull("rlm/rag-prompt-llama")
 
-            # Configurar la cadena de QA
+            
             qa_chain = RetrievalQA.from_chain_type(
                 llm,
                 retriever=vectorstore.as_retriever(),
                 chain_type_kwargs={"prompt": QA_CHAIN_PROMPT},
             )
 
-            # Utilizar la pregunta personalizada si se proporciona, de lo contrario, utilizar la pregunta por defecto
+            
             question = custom_question.strip() if custom_question else f"What is the main idea of {url}?"
 
-            # Realizar la consulta
+            
             response = qa_chain.invoke({"query": question})
             
             def extract_response(response):
-                # Si la respuesta es un diccionario, extraer el valor de 'result'
+                
                 if isinstance(response, dict) and 'result' in response:
                     cleaned_response = response['result']
                 else:
                     cleaned_response = response
 
-                # Eliminar los fragmentos no deseados
+              m 
                 cleaned_response = cleaned_response.replace("[/INST]<<SYS>>", "")
                 cleaned_response = cleaned_response.replace("[SYS]>", "")
                 cleaned_response = cleaned_response.replace("[SYS]", "")
@@ -123,19 +121,19 @@ def main():
                 return cleaned_response.strip()
 
 
-            # Procesar la respuesta para extraer solo el contenido relevante
+          
             cleaned_response = extract_response(response)
 
-            # Agregar la conversación al historial
+         
             st.session_state['conversation_history'].append(("You:", custom_question))
             st.session_state['conversation_history'].append(("Llama3:", cleaned_response))
 
-    # Mostrar el historial de conversaciones
+     
     for sender, message in st.session_state['conversation_history']:
         if sender == "You:":
             st.text_input(sender, message, key=message)
         else:
-            # Ajustar la altura del área de texto para mostrar la respuesta de Llama3
+            
             st.text_area(sender, message, height=100, key=message)
 
 if __name__ == "__main__":
